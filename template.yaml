@@ -1,0 +1,45 @@
+trigger:
+- main  # Replace 'main' with the branch you want to trigger the build from
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+- job: BuildAndPush
+  displayName: 'Build and Push to ACR'
+  steps:
+  - checkout: self
+
+  # Set up Docker CLI
+  - task: UseDotNet@2
+    displayName: 'Install Docker CLI'
+    inputs:
+      packageType: 'docker'
+      version: '2.3.0'
+
+  # Build Docker image
+  - task: Docker@2
+    displayName: 'Build Docker image'
+    inputs:
+      command: 'build'
+      dockerfile: '**/Dockerfile'  # Specify the path to your Dockerfile
+      tags: '$(Build.Repository.Name):$(Build.SourceBranchName)-$(Build.BuildId)' 
+
+  # Log in to Azure Container Registry
+  - task: Docker@2
+    displayName: 'Login to ACR'
+    inputs:
+      command: 'login'
+      containerRegistry: 'your-acr-name.azurecr.io'
+      username: $(ACR_USERNAME) #pass your acr username and password 
+      password: $(ACR_PASSWORD)
+
+  # Push Docker image to Azure Container Registry
+  - task: Docker@2
+    displayName: 'Push to ACR'
+    inputs:
+      command: 'push'
+      containerRegistry: 'your-acr-name.azurecr.io'
+      repository: 'your-repository-name'
+      tags: '$(Build.SourceBranchName)-$(Build.BuildId)'
+
